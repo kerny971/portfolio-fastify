@@ -3,5 +3,6 @@ export const checkEmail = (email: string): boolean => {
   if (regexEmail != null) {
     return (new RegExp(regexEmail)).test(email)
   }
+
   return false
 }

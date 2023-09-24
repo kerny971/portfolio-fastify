@@ -1,13 +1,17 @@
-import { saveClient } from '../controllers/ContactController.js'
+import { checkCode, saveClient, sendMessage } from '../controllers/ContactController.js'
 
-const routes = (fastify: any, options: any, done: any): void => {
-  fastify.get('/', async (request: any, reply: any) => {
+const routes = async (fastify: any, _options: any, done: any): Promise<void> => {
+  fastify.get('/', async () => {
     return {
       message: 'Welcome to contact API Route !'
     }
   })
 
   fastify.post('/', saveClient)
+
+  fastify.post('/code', checkCode)
+
+  fastify.post('/message', sendMessage)
 
   done()
 }

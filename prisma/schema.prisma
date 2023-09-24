@@ -14,7 +14,6 @@ datasource db {
 model Client {
   id            Int       @id @default(autoincrement())
   email         String    @unique
-  full_name     String?
   created_at    DateTime  @default(now())
   is_confirmed  Boolean   @default(false)
   code          Code[]
@@ -28,17 +27,15 @@ model Code {
   expired_at    DateTime
   client        Client      @relation(fields: [clientEmail], references: [email])
   clientEmail   String
-  message       Message?    @relation(fields: [messageId], references: [id])
-  messageId     Int?        @unique
 }
 
 // Message Sent from the client
 model Message {
   id          Int       @id @default(autoincrement())
-  subject     String
-  body        String    @db.LongText
+  subject     String    @db.Text
+  full_name   String?
+  body        String    @db.MediumText
   created_at  DateTime  @default(now())
   client      Client    @relation(fields: [clientId], references: [id])
   clientId    Int
-  code        Code?
 }
