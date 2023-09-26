@@ -8,6 +8,7 @@ import { expiredAt, formatDateForMysqlDateTime } from '../functions/date.js'
 import { checkMessageHaveErrors } from '../functions/ValidateMessage.js'
 import { removeWhiteSpace } from '../functions/string.js'
 
+
 async function saveClientDB ({ email }: { email: string }, prisma: PrismaClient): Promise<any> {
   const client = await prisma.client.create({
     data: {
@@ -73,24 +74,23 @@ async function deleteCodeSentDB (id: number, prisma: PrismaClient): Promise<any>
 }
 
 export const saveClient = async (request: any, reply: any): Promise<any> => {
-  const { email } = request.body
-  if (!checkEmail(email)) {
-    reply.statusCode = 400
-    return {
-      message: 'L\'email n\'est pas valide'
-    }
-  }
-
-  let user: any
   const prisma = new PrismaClient()
-
   try {
+    const { email } = request.body
+    if (!checkEmail(email)) {
+      reply.statusCode = 400
+      return {
+        message: 'L\'email n\'est pas valide'
+      }
+    }
+
+    let user: any
+
+    await prisma.$connect()
     user = await getClientDB({ email }, prisma)
-    await prisma.$disconnect()
 
     if (_.isEmpty(user)) {
       user = await saveClientDB({ email }, prisma)
-      await prisma.$disconnect()
     } else {
       const maxEmailSentForEmailValidation = Number(process.env.MAX_EMAIL_SENT)
       if (user.code.length > maxEmailSentForEmailValidation) {
@@ -133,7 +133,7 @@ export const saveClient = async (request: any, reply: any): Promise<any> => {
       await prisma.$disconnect()
     }
     console.error(error)
-    reply.statusCode = 500
+    reply.statusCode = 505
     return {
       message: 'Une erreur s\'est produite'
     }
@@ -141,31 +141,31 @@ export const saveClient = async (request: any, reply: any): Promise<any> => {
 }
 
 export const checkCode = async (request: any, reply: any): Promise<any> => {
-  const { code, email } = request.body
-
-  if (_.isEmpty(code)) {
-    reply.statusCode = 400
-    return {
-      message: 'Un code de validité doit être soumis',
-      fields: [
-        { name: 'code', message: 'Un code de validité doit-être soumis !' }
-      ]
-    }
-  }
-
-  if (!checkEmail(email)) {
-    reply.statusCode = 400
-    return {
-      message: 'L\'email n\'est pas valide',
-      fields: [
-        { name: 'email', message: 'L\'email n\'est pas valide !' }
-      ]
-    }
-  }
-
   const prisma = new PrismaClient()
-
   try {
+    const { code, email } = request.body
+
+    if (_.isEmpty(code)) {
+      reply.statusCode = 400
+      return {
+        message: 'Un code de validité doit être soumis',
+        fields: [
+          { name: 'code', message: 'Un code de validité doit-être soumis !' }
+        ]
+      }
+    }
+
+    if (!checkEmail(email)) {
+      reply.statusCode = 400
+      return {
+        message: 'L\'email n\'est pas valide',
+        fields: [
+          { name: 'email', message: 'L\'email n\'est pas valide !' }
+        ]
+      }
+    }
+
+    await prisma.$connect()
     const user = await getClientDB({ email }, prisma)
     await prisma.$disconnect()
 
@@ -204,44 +204,43 @@ export const checkCode = async (request: any, reply: any): Promise<any> => {
 }
 
 export const sendMessage = async (request: any, reply: any): Promise<any> => {
-  const { code, email } = request.body
-  const message = {
-    fullname: request.body.fullname != null ? removeWhiteSpace(request.body.fullname) : '',
-    subject: request.body.subject != null ? removeWhiteSpace(request.body.subject) : '',
-    body: request.body.body != null ? removeWhiteSpace(request.body.body) : ''
-  }
-
-  if (_.isEmpty(code)) {
-    reply.statusCode = 400
-    return {
-      message: 'Un code de validité doit être soumis',
-      fields: [
-        { name: 'code', message: 'Un code de validité doit-être soumis !' }
-      ]
-    }
-  }
-
-  if (!checkEmail(email)) {
-    reply.statusCode = 400
-    return {
-      message: 'L\'email n\'est pas valide',
-      fields: [
-        { name: 'email', message: 'L\'email n\'est pas valide !' }
-      ]
-    }
-  }
-
-  const checkMessagesErrors = await checkMessageHaveErrors(message)
-  if (checkMessagesErrors !== null) {
-    reply.statusCode = 400
-    return checkMessagesErrors
-  }
-
   const prisma = new PrismaClient()
-
   try {
+    const { code, email } = request.body
+    const message = {
+      fullname: request.body.fullname != null ? removeWhiteSpace(request.body.fullname) : '',
+      subject: request.body.subject != null ? removeWhiteSpace(request.body.subject) : '',
+      body: request.body.body != null ? removeWhiteSpace(request.body.body) : ''
+    }
+
+    if (_.isEmpty(code)) {
+      reply.statusCode = 400
+      return {
+        message: 'Un code de validité doit être soumis',
+        fields: [
+          { name: 'code', message: 'Un code de validité doit-être soumis !' }
+        ]
+      }
+    }
+
+    if (!checkEmail(email)) {
+      reply.statusCode = 400
+      return {
+        message: 'L\'email n\'est pas valide',
+        fields: [
+          { name: 'email', message: 'L\'email n\'est pas valide !' }
+        ]
+      }
+    }
+
+    const checkMessagesErrors = await checkMessageHaveErrors(message)
+    if (checkMessagesErrors !== null) {
+      reply.statusCode = 400
+      return checkMessagesErrors
+    }
+
+    await prisma.$connect()
     const user = await getClientDB({ email }, prisma)
-    await prisma.$disconnect()
 
     if (_.isEmpty(user)) {
       reply.statusCode = 400
@@ -259,7 +258,6 @@ export const sendMessage = async (request: any, reply: any): Promise<any> => {
     }
 
     await saveMessageSentDB({ message, clientId: user.id }, prisma)
-    await prisma.$disconnect()
 
     await deleteCodeSentDB(codeCheck[0].id, prisma)
     await prisma.$disconnect()

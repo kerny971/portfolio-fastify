@@ -1,7 +1,10 @@
 import Fastify from 'fastify'
 import fastifyEnv from '@fastify/env'
+import cors from '@fastify/cors'
+
 import { RouteTest } from './app/routes/RouteTest.js'
 import { RouteContact } from './app/routes/RouteContact.js'
+import { RouteProject } from './app/routes/RouteProjects.js'
 
 const fastify = Fastify({
   logger: true
@@ -12,6 +15,10 @@ await fastify.register(fastifyEnv, {
   dotenv: true
 })
 
+await fastify.register(cors, {
+  origin: '*'
+})
+
 await fastify.register(import('@fastify/formbody'))
 
 await fastify.register(RouteTest, {
@@ -20,6 +27,10 @@ await fastify.register(RouteTest, {
 
 await fastify.register(RouteContact, {
   prefix: '/contact'
+})
+
+await fastify.register(RouteProject, {
+  prefix: "/projects"
 })
 
 fastify.get('/', async function handler (request: Fastify.FastifyRequest, reply: Fastify.FastifyReply) {
