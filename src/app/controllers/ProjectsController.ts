@@ -1,7 +1,7 @@
-import { Prisma, PrismaClient } from "@prisma/client"
+import { Prisma, PrismaClient } from '@prisma/client'
 
 async function getProjectsDB (prisma: PrismaClient): Promise<any[]> {
-  const projects = prisma.project.findMany({
+  const projects = await prisma.project.findMany({
     orderBy: {
       id: 'desc'
     },
@@ -13,27 +13,24 @@ async function getProjectsDB (prisma: PrismaClient): Promise<any[]> {
 }
 
 export const getProjects = async (_request: any, reply: any): Promise<any> => {
-
   const prisma = new PrismaClient()
 
   try {
     await prisma.$connect()
     const projects = await getProjectsDB(prisma)
-    prisma.$disconnect()
-
-    const waitFor = (delay: any) => new Promise(resolve => setTimeout(resolve, delay));
-    await waitFor(8000);
+    await prisma.$disconnect()
 
     reply.statusCode = 200
     return {
-      message: "Mes projets",
+      message: 'Mes projets',
       data: {
         projects
       }
     }
   } catch (error) {
+    console.log(error)
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      prisma.$disconnect()
+      await prisma.$disconnect()
     }
     reply.statusCode = 500
     return {

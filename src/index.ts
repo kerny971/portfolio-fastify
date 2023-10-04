@@ -5,6 +5,11 @@ import cors from '@fastify/cors'
 import { RouteTest } from './app/routes/RouteTest.js'
 import { RouteContact } from './app/routes/RouteContact.js'
 import { RouteProject } from './app/routes/RouteProjects.js'
+import path from 'path'
+
+const ROOT_DIRECTORY_PATH = process.cwd()
+const ENV_PATHFILE = '.env.production'
+const ENV_PATH = path.join(ROOT_DIRECTORY_PATH, ENV_PATHFILE)
 
 const fastify = Fastify({
   logger: true
@@ -12,11 +17,14 @@ const fastify = Fastify({
 
 await fastify.register(fastifyEnv, {
   schema: {},
-  dotenv: true
+  dotenv: {
+    debug: true,
+    path: ENV_PATH
+  }
 })
 
 await fastify.register(cors, {
-  origin: '*'
+  origin: process.env.CORS
 })
 
 await fastify.register(import('@fastify/formbody'))
@@ -30,7 +38,7 @@ await fastify.register(RouteContact, {
 })
 
 await fastify.register(RouteProject, {
-  prefix: "/projects"
+  prefix: '/projects'
 })
 
 fastify.get('/', async function handler (request: Fastify.FastifyRequest, reply: Fastify.FastifyReply) {
@@ -40,7 +48,7 @@ fastify.get('/', async function handler (request: Fastify.FastifyRequest, reply:
 })
 
 try {
-  await fastify.listen({ port: Number(process.env.FASTIFY_PORT) })
+  await fastify.listen({ port: Number(process.env.FASTIFY_PORT), host: process.env.FASTIFY_HOST })
 } catch (err) {
   fastify.log.error(err)
   process.exit(1)

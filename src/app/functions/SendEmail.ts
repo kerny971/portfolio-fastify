@@ -15,7 +15,7 @@ export default class SendEmail {
 
     this.msg = {
       from: `'${process.env.FROM_NAME_EMAIL_CONFIRMATION}' <${process.env.FROM_EMAIL_EMAIL_CONFIRMATION}>`,
-      to: `${user.pseudo ?? ''}<${user.email}>`,
+      to: `${user.pseudo ?? ''} <${user.email}>`,
       subject,
       text,
       html

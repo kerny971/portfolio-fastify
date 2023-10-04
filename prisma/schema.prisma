@@ -43,6 +43,7 @@ model Message {
 model Project {
   id            Int               @id @default(autoincrement())
   name          String    
+  image_url     String
   description   String            @db.Text
   link          ProjectLink[]
 }

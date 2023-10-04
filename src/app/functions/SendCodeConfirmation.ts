@@ -25,52 +25,20 @@ export default class SendCodeConfirmation {
       Si vous n'êtes pas à l'origine de ce message, veuillez ne pas prendre en compte les instructions indiquée.
     `
     this._html = `
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;700&display=swap" rel="stylesheet">
-        <style>
-          body {
-            font-family: Inter, sans-serif,
-          }
-
-          div {
-              max-width: 300px;
-              padding: 1em;
-              margin: 1em auto;
-              text-align: center;
-          }
-
-          span {
-            margin-top: .75em;
-            font-size: 1.3em;
-            font-weight: 500;
-          }
-
-          small {
-            display: block;
-          }
-
-          small:last-child() {
-            margin-top: 2em;
-          } 
-        </style>
-      </head>
-      <body>
-          <div>
-            <h1>Portfolio Kerny LAGUERRE</h1>
-            Chèr(e) ${user.pseudo ?? 'visiteur(se)'},
-            <p>
-              Vérifiez votre adresse électronique.<br/>
-              Confirmez que l'adresse ${user.email} est bien la vôtre en saisissant le code ci-dessous dans le champs correspondant.<br/>
-              <span>
-                ${this._code}
-              </span>
-            <p>
-            <small>Ce code est valable durant 24 h et jusqu'à la fin du processus du formulaire de contact</small>
-            <small>Si vous n'êtes pas à l'origine de ce message, veuillez ne pas prendre en compte les instructions indiquée.</small>
-          </div>
-      </body>
+        <div style="max-width: 500px; font-family: ui-system;">
+          <h1>Portfolio Kerny LAGUERRE</h1>
+          Chèr(e) ${user.pseudo ?? 'visiteur(se)'},
+          <p>
+            Vérifiez votre adresse électronique.<br/>
+            Confirmez que l'adresse ${user.email} est bien la vôtre en saisissant le code ci-dessous dans le champs correspondant.<br/>
+            <br/>
+            <span style="font-size: 1.3em; font-weight: 600;">
+              ${this._code}
+            </span>
+          </p>
+          <div style="font-size: .7em;">Ce code est valable durant 24 h et jusqu'à la fin du processus du formulaire de contact</div>
+          <div style="font-size: .7em;">Si vous n'êtes pas à l'origine de ce message, veuillez ne pas prendre en compte les instructions indiquée.</div>
+        </div>
     `
   }
 

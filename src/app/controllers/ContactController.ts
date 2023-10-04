@@ -1,13 +1,14 @@
 import { Prisma, PrismaClient } from '@prisma/client'
 import _ from 'lodash'
 import crypto from 'crypto'
+import ky from 'ky'
 
 import { checkEmail } from '../functions/ValidateEmail.js'
 import SendCodeConfirmation from '../functions/SendCodeConfirmation.js'
 import { expiredAt, formatDateForMysqlDateTime } from '../functions/date.js'
 import { checkMessageHaveErrors } from '../functions/ValidateMessage.js'
 import { removeWhiteSpace } from '../functions/string.js'
-
+import SendMessage from '../functions/SendMessage.js'
 
 async function saveClientDB ({ email }: { email: string }, prisma: PrismaClient): Promise<any> {
   const client = await prisma.client.create({
@@ -76,7 +77,7 @@ async function deleteCodeSentDB (id: number, prisma: PrismaClient): Promise<any>
 export const saveClient = async (request: any, reply: any): Promise<any> => {
   const prisma = new PrismaClient()
   try {
-    const { email } = request.body
+    const { email, token } = request.body
     if (!checkEmail(email)) {
       reply.statusCode = 400
       return {
@@ -84,9 +85,48 @@ export const saveClient = async (request: any, reply: any): Promise<any> => {
       }
     }
 
-    let user: any
+    if (token === '') {
+      reply.statusCode = 400
+      return {
+        message: 'Une erreur s\'est produite...'
+      }
+    }
+
+    const RecaptchaApiUrl = process.env.RECAPTCHA_URL ?? ''
+    const RecaptchaApiSecret = process.env.RECAPTCHA_API_SECRET ?? ''
+    const urlEncoded = new URLSearchParams()
+    urlEncoded.append('secret', RecaptchaApiSecret)
+    urlEncoded.append('response', token)
+    const recaptchaApi: any = await ky.post(RecaptchaApiUrl, {
+      body: urlEncoded
+    }).json()
+
+    if (recaptchaApi.success === false) {
+      reply.statusCode = 400
+      return {
+        message: 'Une erreur s\'est produite...'
+      }
+    }
+
+    const RecaptchaActionSaveEmail = process.env.RECAPTCHA_ACTION_SAVE_EMAIL
+    if (recaptchaApi.action !== RecaptchaActionSaveEmail) {
+      reply.statusCode = 400
+      return {
+        message: 'Une erreur s\'est produite...'
+      }
+    }
+
+    const RecaptchaActionSaveEmailScore = Number(process.env.RECAPTCHA_ACTION_SAVE_EMAIL_SCORE)
+    if (recaptchaApi.score < RecaptchaActionSaveEmailScore) {
+      reply.statusCode = 400
+      return {
+        message: 'Une erreur s\'est produite...'
+      }
+    }
 
     await prisma.$connect()
+
+    let user: any
     user = await getClientDB({ email }, prisma)
 
     if (_.isEmpty(user)) {
@@ -101,7 +141,9 @@ export const saveClient = async (request: any, reply: any): Promise<any> => {
       }
     }
 
-    const hash = crypto.randomBytes(3).toString('hex')
+    let hashSize = Number(process.env.HASH_SIZE)
+    hashSize = hashSize > 3 ? hashSize : 4
+    const hash = crypto.randomBytes(hashSize).toString('hex')
     const NBR_DAYS_BEFORE_CODE_EXPIRE = Number(process.env.NBR_DAYS_EXPIRED_AT_CODE)
     const expired = expiredAt(NBR_DAYS_BEFORE_CODE_EXPIRE)
     const sendCodeConfirmation = new SendCodeConfirmation({ email }, hash)
@@ -133,7 +175,7 @@ export const saveClient = async (request: any, reply: any): Promise<any> => {
       await prisma.$disconnect()
     }
     console.error(error)
-    reply.statusCode = 505
+    reply.statusCode = 50
     return {
       message: 'Une erreur s\'est produite'
     }
@@ -143,7 +185,7 @@ export const saveClient = async (request: any, reply: any): Promise<any> => {
 export const checkCode = async (request: any, reply: any): Promise<any> => {
   const prisma = new PrismaClient()
   try {
-    const { code, email } = request.body
+    const { code, email, token } = request.body
 
     if (_.isEmpty(code)) {
       reply.statusCode = 400
@@ -162,6 +204,45 @@ export const checkCode = async (request: any, reply: any): Promise<any> => {
         fields: [
           { name: 'email', message: 'L\'email n\'est pas valide !' }
         ]
+      }
+    }
+
+    if (token === '') {
+      reply.statusCode = 400
+      return {
+        message: 'Une erreur s\'est produite...'
+      }
+    }
+
+    const RecaptchaApiUrl = process.env.RECAPTCHA_URL ?? ''
+    const RecaptchaApiSecret = process.env.RECAPTCHA_API_SECRET ?? ''
+    const urlEncoded = new URLSearchParams()
+    urlEncoded.append('secret', RecaptchaApiSecret)
+    urlEncoded.append('response', token)
+    const recaptchaApi: any = await ky.post(RecaptchaApiUrl, {
+      body: urlEncoded
+    }).json()
+
+    if (recaptchaApi.success === false) {
+      reply.statusCode = 400
+      return {
+        message: 'Une erreur s\'est produite...'
+      }
+    }
+
+    const RecaptchaActionCheckCode = process.env.RECAPTCHA_ACTION_CHECK_CODE
+    if (recaptchaApi.action !== RecaptchaActionCheckCode) {
+      reply.statusCode = 400
+      return {
+        message: 'Une erreur s\'est produite...'
+      }
+    }
+
+    const RecaptchaActionCheckCodeScore = Number(process.env.RECAPTCHA_ACTION_CHECK_CODE_SCORE ?? 0.2)
+    if (recaptchaApi.score < RecaptchaActionCheckCodeScore) {
+      reply.statusCode = 400
+      return {
+        message: 'Une erreur s\'est produite...'
       }
     }
 
@@ -206,7 +287,7 @@ export const checkCode = async (request: any, reply: any): Promise<any> => {
 export const sendMessage = async (request: any, reply: any): Promise<any> => {
   const prisma = new PrismaClient()
   try {
-    const { code, email } = request.body
+    const { code, email, token } = request.body
     const message = {
       fullname: request.body.fullname != null ? removeWhiteSpace(request.body.fullname) : '',
       subject: request.body.subject != null ? removeWhiteSpace(request.body.subject) : '',
@@ -233,10 +314,49 @@ export const sendMessage = async (request: any, reply: any): Promise<any> => {
       }
     }
 
+    if (token === '') {
+      reply.statusCode = 400
+      return {
+        message: 'Une erreur s\'est produite...'
+      }
+    }
+
     const checkMessagesErrors = await checkMessageHaveErrors(message)
     if (checkMessagesErrors !== null) {
       reply.statusCode = 400
       return checkMessagesErrors
+    }
+
+    const RecaptchaApiUrl = process.env.RECAPTCHA_URL ?? ''
+    const RecaptchaApiSecret = process.env.RECAPTCHA_API_SECRET ?? ''
+    const urlEncoded = new URLSearchParams()
+    urlEncoded.append('secret', RecaptchaApiSecret)
+    urlEncoded.append('response', token)
+    const recaptchaApi: any = await ky.post(RecaptchaApiUrl, {
+      body: urlEncoded
+    }).json()
+
+    if (recaptchaApi.success === false) {
+      reply.statusCode = 400
+      return {
+        message: 'Une erreur s\'est produite...'
+      }
+    }
+
+    const RecaptchaActionSendMessage = process.env.RECAPTCHA_ACTION_SEND_MESSAGE
+    if (recaptchaApi.action !== RecaptchaActionSendMessage) {
+      reply.statusCode = 400
+      return {
+        message: 'Une erreur s\'est produite...'
+      }
+    }
+
+    const RecaptchaActionSendEmailScore = Number(process.env.RECAPTCHA_ACTION_SEND_MESSAGE_SCORE ?? 0.2)
+    if (recaptchaApi.score < RecaptchaActionSendEmailScore) {
+      reply.statusCode = 400
+      return {
+        message: 'Une erreur s\'est produite...'
+      }
     }
 
     await prisma.$connect()
@@ -261,6 +381,23 @@ export const sendMessage = async (request: any, reply: any): Promise<any> => {
 
     await deleteCodeSentDB(codeCheck[0].id, prisma)
     await prisma.$disconnect()
+
+    const sendMessage = new SendMessage({
+      user: {
+        email,
+        pseudo: message.fullname
+      },
+      subject: message.subject,
+      body: message.body
+    })
+    const response = await sendMessage.send()
+
+    if (response.rejected.includes(email) === true) {
+      reply.statusCode = 500
+      return {
+        message: 'Une erreur s\'est produite'
+      }
+    }
 
     reply.statusCode = 200
     return {
